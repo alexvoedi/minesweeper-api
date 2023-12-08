@@ -1,6 +1,6 @@
 import { CellAction } from '../enums/cell-action';
 
-export class RevealCellDto {
+export class UpdateCellDto {
   readonly action: CellAction;
   readonly x: number;
   readonly y: number;
