@@ -4,6 +4,7 @@ import { Id } from './types/Id';
 import { GameNotFoundError } from './erros/game-not-found.error';
 import { Xy } from './types/xy';
 import { BoardSettings } from './classes/board';
+import { xyToString } from './helpers/xy-to-string';
 
 @Injectable()
 export class GameService {
@@ -22,13 +23,16 @@ export class GameService {
     this.games.set(id, game);
 
     this.logger.log(
-      `Created game with ID ${id} (${settings.rows}x${settings.cols} with ${settings.mines} mines)`,
+      `Created game with ID ${id} (${settings.rows}x${settings.cols} with ${settings.mines} mines).`,
     );
 
-    return {
-      id,
-      settings,
-    };
+    return game.serialize();
+  }
+
+  deleteGame(id: Id) {
+    this.games.delete(id);
+
+    this.logger.log(`Deleted game with ID ${id}.`);
   }
 
   getGame(id: Id) {
@@ -39,6 +43,12 @@ export class GameService {
     }
 
     return game;
+  }
+
+  getSerializedGame(id: Id) {
+    const game = this.getGame(id);
+
+    return game.serialize();
   }
 
   getSerializedBoard(id: Id) {
@@ -60,11 +70,25 @@ export class GameService {
   openCell(id: Id, [x, y]: Xy) {
     const game = this.getGame(id);
 
+    this.logger.log(`Opened cell ${xyToString([x, y])} in game ${id}.`);
+
     return game.openCell([x, y]);
+  }
+
+  openAdjacentCells(id: Id, [x, y]: Xy) {
+    const game = this.getGame(id);
+
+    this.logger.log(
+      `Opened adjacent cells of ${xyToString([x, y])} in game ${id}.`,
+    );
+
+    return game.openAdjacentCells([x, y]);
   }
 
   flagCell(id: Id, [x, y]: Xy) {
     const game = this.getGame(id);
+
+    this.logger.log(`Flagged cell ${xyToString([x, y])} in game ${id}.`);
 
     return game.flagCell([x, y]);
   }
@@ -72,11 +96,15 @@ export class GameService {
   markCell(id: Id, [x, y]: Xy) {
     const game = this.getGame(id);
 
+    this.logger.log(`Marked cell ${xyToString([x, y])} in game ${id}.`);
+
     return game.markCell([x, y]);
   }
 
   clearCell(id: Id, [x, y]: Xy) {
     const game = this.getGame(id);
+
+    this.logger.log(`Cleared cell ${xyToString([x, y])} in game ${id}.`);
 
     return game.clearCell([x, y]);
   }

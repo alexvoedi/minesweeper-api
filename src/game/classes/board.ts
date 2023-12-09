@@ -1,12 +1,12 @@
 import { CellState } from '../enums/cell-state';
 import { CellNotFoundError } from '../erros/cell-not-found.error';
-import { OutOfBoundsError as OutOfBoundsError } from '../erros/out-of-bounds.error';
+import { OutOfBoundsError } from '../erros/out-of-bounds.error';
 import { TooManyMinesError } from '../erros/too-many-mines.error';
-import { TriedToOpenFlaggedCellError } from '../erros/tried-to-open-flagged-cell.error';
 import { xyToString } from '../helpers/xy-to-string';
+import { SerializedBoard } from '../types/serialized-board';
+import { SerializedCell } from '../types/serialized-cell';
 import { Xy } from '../types/xy';
 import { Cell } from './cell';
-import { NotImplementedError } from '../erros/not-implemented.error';
 
 export type BoardSettings = {
   rows: number;
@@ -16,7 +16,7 @@ export type BoardSettings = {
 
 export class Board {
   private cells: Map<string, Cell>;
-
+  private openedCells: Cell[];
   private minesPlaced: boolean;
 
   constructor(readonly settings: BoardSettings) {
@@ -25,6 +25,7 @@ export class Board {
     }
 
     this.minesPlaced = false;
+    this.openedCells = [];
 
     this.createCells();
   }
@@ -41,17 +42,26 @@ export class Board {
     }
   }
 
+  getSettings() {
+    return this.settings;
+  }
+
   isInBounds([x, y]: Xy) {
-    return (
-      0 <= x &&
-      x < this.settings.rows - 1 &&
-      0 <= y &&
-      y < this.settings.cols - 1
-    );
+    return 0 <= x && x < this.settings.cols && 0 <= y && y < this.settings.rows;
   }
 
   checkWinCondition() {
-    throw new NotImplementedError();
+    let closedCells = 0;
+
+    for (const cell of this.cells.values()) {
+      const isMine = cell.isMine();
+
+      if (isMine) {
+        closedCells++;
+      }
+    }
+
+    return closedCells === this.settings.mines;
   }
 
   getCell([x, y]: Xy): Cell {
@@ -95,38 +105,68 @@ export class Board {
   }
 
   getAdjacentCells([x, y]: Xy): Cell[] {
-    const surroundingCells: Cell[] = [];
+    const adjacentCells: Cell[] = [];
 
     for (let i = x - 1; i <= x + 1; i++) {
       for (let j = y - 1; j <= y + 1; j++) {
         if (i === x && j === y) continue;
 
+        const isInBounds = this.isInBounds([i, j]);
+
+        if (!isInBounds) continue;
+
         const cell = this.getCell([i, j]);
 
-        surroundingCells.push(cell);
+        adjacentCells.push(cell);
       }
     }
 
-    return surroundingCells;
+    return adjacentCells;
   }
 
-  getAdjacentCellsWithMines([x, y]: Xy): Cell[] {
-    const adjacentCells = this.getAdjacentCells([x, y]);
+  getOpenedCells(): Cell[] {
+    return this.openedCells;
+  }
 
-    const adjacentCellsWithMines = adjacentCells.filter((cell) =>
-      cell.isMine(),
+  getClosedCells(): Cell[] {
+    const closedCells = Array.from(this.cells.values()).filter((cell) =>
+      cell.isClosed(),
     );
 
-    return adjacentCellsWithMines;
+    return closedCells;
+  }
+
+  getAdjacentCellsWithMine([x, y]: Xy): Cell[] {
+    const adjacentCells = this.getAdjacentCells([x, y]);
+
+    const adjacentCellsWithMine = adjacentCells.filter((cell) => cell.isMine());
+
+    return adjacentCellsWithMine;
+  }
+
+  getAdjacentCellsWithFlag([x, y]: Xy): Cell[] {
+    const adjacentCells = this.getAdjacentCells([x, y]);
+
+    const adjacentCellsWithFlag = adjacentCells.filter((cell) =>
+      cell.isFlagged(),
+    );
+
+    return adjacentCellsWithFlag;
   }
 
   countAdjacentMines([x, y]: Xy): number {
-    const adjacentCellsWithMines = this.getAdjacentCellsWithMines([x, y]);
+    const adjacentCellsWithMines = this.getAdjacentCellsWithMine([x, y]);
 
     return adjacentCellsWithMines.length;
   }
 
-  hasAdjacentMines([x, y]: Xy) {
+  countAdjacentFlags([x, y]: Xy): number {
+    const adjacentCellsWithFlag = this.getAdjacentCellsWithFlag([x, y]);
+
+    return adjacentCellsWithFlag.length;
+  }
+
+  hasAdjacentMines([x, y]: Xy): boolean {
     for (let i = x - 1; i <= x + 1; i++) {
       for (let j = y - 1; j <= y + 1; j++) {
         if (i === x && j === y) continue;
@@ -144,7 +184,7 @@ export class Board {
     return false;
   }
 
-  private placeMines() {
+  private placeMines(): void {
     let mines = 0;
 
     while (mines < this.settings.mines) {
@@ -165,7 +205,7 @@ export class Board {
     this.minesPlaced = true;
   }
 
-  openCellsRecursively([x, y]: Xy, openedXyArr?: Xy[]): Xy[] {
+  openCellRecursively([x, y]: Xy, openedXyArr?: Xy[]): Xy[] {
     const cell = this.getCell([x, y]);
 
     const isAlreadyOpen = cell.isOpened();
@@ -177,17 +217,19 @@ export class Board {
     const isFlagged = cell.isFlagged();
 
     if (isFlagged) {
-      throw new TriedToOpenFlaggedCellError();
+      return openedXyArr;
     }
 
     cell.setState(CellState.OPENED);
     openedXyArr.push([cell.x, cell.y]);
 
+    this.openedCells.push(cell);
+
     if (!this.minesPlaced) {
       this.placeMines();
     }
 
-    const adjacentCellsWithMines = this.getAdjacentCellsWithMines([x, y]);
+    const adjacentCellsWithMines = this.getAdjacentCellsWithMine([x, y]);
 
     if (adjacentCellsWithMines.length === 0) {
       const closedAdjacentCells = this.getAdjacentCells([x, y]).filter(
@@ -195,27 +237,23 @@ export class Board {
       );
 
       closedAdjacentCells.forEach(({ x, y }) =>
-        this.openCellsRecursively([x, y], openedXyArr),
+        this.openCellRecursively([x, y], openedXyArr),
       );
     }
 
     return openedXyArr;
   }
 
-  serialize({ withMines }: { withMines?: boolean } = {}) {
-    const serializedCells = [];
+  serialize({ withMines }: { withMines?: boolean } = {}): SerializedBoard {
+    const serializedCells: SerializedCell[] = [];
 
     for (const cell of this.cells.values()) {
-      const include = !withMines || (withMines && cell.isMine());
+      const serializedCell = {
+        ...cell.serialize({ withMine: withMines }),
+        adjacentMines: this.countAdjacentMines([cell.x, cell.y]),
+      };
 
-      if (include) {
-        const serializedCell = {
-          ...cell.serialize({ withMine: withMines }),
-          adjacentMines: this.countAdjacentMines([cell.x, cell.y]),
-        };
-
-        serializedCells.push(serializedCell);
-      }
+      serializedCells.push(serializedCell);
     }
 
     return {

@@ -2,12 +2,14 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   InternalServerErrorException,
   Logger,
   NotFoundException,
   Param,
   Patch,
+  Post,
   Put,
 } from '@nestjs/common';
 import { GameService } from './game.service';
@@ -21,6 +23,8 @@ import { TooManyMinesError } from './erros/too-many-mines.error';
 import { Status } from './enums/status';
 import { TriedToOpenFlaggedCellError } from './erros/tried-to-open-flagged-cell.error';
 import { TriedToChangeOpenedCellError } from './erros/tried-to-change-opened-cell.error';
+import { GetCellDto } from './dtos/get-cell.dto';
+import { NotEnoughAdjacentCellsWithFlagError } from './erros/not-enough-adjacent-cells-with-flag.error';
 
 @Controller('games')
 export class GameController {
@@ -38,7 +42,40 @@ export class GameController {
     } catch (error) {
       switch (error.constructor) {
         case TooManyMinesError: {
-          throw new BadRequestException(error);
+          throw new BadRequestException(error.message);
+        }
+      }
+    }
+  }
+
+  @Get(':id')
+  getGame(@Param('id') id: Id) {
+    try {
+      return {
+        status: Status.SUCCESS,
+        data: this.gameService.getSerializedGame(id),
+      };
+    } catch (error) {
+      switch (error.constructor) {
+        case GameNotFoundError: {
+          throw new NotFoundException(error.message);
+        }
+      }
+    }
+  }
+
+  @Delete(':id')
+  deleteGame(@Param('id') id: Id) {
+    try {
+      this.gameService.deleteGame(id);
+
+      return {
+        status: Status.SUCCESS,
+      };
+    } catch (error) {
+      switch (error.constructor) {
+        case GameNotFoundError: {
+          throw new NotFoundException(error.message);
         }
       }
     }
@@ -46,18 +83,34 @@ export class GameController {
 
   @Get(':id/boards')
   getBoard(@Param('id') id: Id) {
-    return {
-      status: Status.SUCCESS,
-      data: this.gameService.getSerializedBoard(id),
-    };
+    try {
+      return {
+        status: Status.SUCCESS,
+        data: this.gameService.getSerializedBoard(id),
+      };
+    } catch (error) {
+      switch (error.constructor) {
+        case GameNotFoundError: {
+          throw new NotFoundException(error.message);
+        }
+      }
+    }
   }
 
-  @Get(':id/cells')
-  getCell(@Param('id') id: Id, @Body() { x, y }) {
-    return {
-      status: Status.SUCCESS,
-      data: this.gameService.getSerializedCell(id, [x, y]),
-    };
+  @Post(':id/cells')
+  getCell(@Param('id') id: Id, @Body() { x, y }: GetCellDto) {
+    try {
+      return {
+        status: Status.SUCCESS,
+        data: this.gameService.getSerializedCell(id, [x, y]),
+      };
+    } catch (error) {
+      switch (error.constructor) {
+        case GameNotFoundError: {
+          throw new NotFoundException(error.message);
+        }
+      }
+    }
   }
 
   @Patch(':id/cells')
@@ -88,17 +141,22 @@ export class GameController {
             data: this.gameService.clearCell(id, [x, y]),
           };
         }
-        case CellAction.OPEN_SURROUNDING: {
-          // todo
+        case CellAction.OPEN_ADJACENT: {
+          return {
+            status: Status.SUCCESS,
+            data: this.gameService.openAdjacentCells(id, [x, y]),
+          };
         }
         default: {
           throw new BadRequestException(`Unknown cell action: ${action}`);
         }
       }
     } catch (error) {
+      this.logger.error(error);
       switch (error.constructor) {
         case TriedToChangeOpenedCellError:
         case TriedToOpenFlaggedCellError:
+        case NotEnoughAdjacentCellsWithFlagError:
         case CellIsAlreadyOpenedError: {
           throw new BadRequestException(error.message);
         }

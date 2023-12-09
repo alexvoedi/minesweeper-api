@@ -1,5 +1,7 @@
 import { CellState } from '../enums/cell-state';
 import { CellIsAlreadyOpenedError as IsAlreadyOpenedError } from '../erros/cell-is-already-opened.error';
+import { xyToString } from '../helpers/xy-to-string';
+import { SerializedCell } from '../types/serialized-cell';
 
 export class Cell {
   private mine: boolean;
@@ -41,7 +43,11 @@ export class Cell {
     return this.state === CellState.OPENED;
   }
 
-  serialize({ withMine }: { withMine?: boolean } = {}) {
+  isClosed(): boolean {
+    return this.state !== CellState.OPENED;
+  }
+
+  serialize({ withMine }: { withMine?: boolean } = {}): SerializedCell {
     const { x, y, state, mine } = this;
 
     const serializedCell = {
@@ -52,5 +58,9 @@ export class Cell {
     };
 
     return serializedCell;
+  }
+
+  toString(): string {
+    return xyToString([this.x, this.y]);
   }
 }
