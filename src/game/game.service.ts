@@ -23,7 +23,7 @@ export class GameService {
     this.games.set(id, game);
 
     this.logger.log(
-      `Created game with ID ${id} (${settings.rows}x${settings.cols} with ${settings.mines} mines).`,
+      `Created game with ID ${id} (${settings.rows}x${settings.cols} with ${settings.mines} mines)`,
     );
 
     return game.serialize();
