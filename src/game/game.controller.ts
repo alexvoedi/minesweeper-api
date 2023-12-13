@@ -40,6 +40,7 @@ export class GameController {
         data: this.gameService.createGame(dto),
       };
     } catch (error) {
+      this.logger.error(error.message);
       switch (error.constructor) {
         case TooManyMinesError: {
           throw new BadRequestException(error.message);
@@ -56,6 +57,7 @@ export class GameController {
         data: this.gameService.getSerializedGame(id),
       };
     } catch (error) {
+      this.logger.error(error.message);
       switch (error.constructor) {
         case GameNotFoundError: {
           throw new NotFoundException(error.message);
@@ -73,6 +75,7 @@ export class GameController {
         status: Status.SUCCESS,
       };
     } catch (error) {
+      this.logger.error(error.message);
       switch (error.constructor) {
         case GameNotFoundError: {
           throw new NotFoundException(error.message);
@@ -89,6 +92,7 @@ export class GameController {
         data: this.gameService.getSerializedBoard(id),
       };
     } catch (error) {
+      this.logger.error(error.message);
       switch (error.constructor) {
         case GameNotFoundError: {
           throw new NotFoundException(error.message);
@@ -105,6 +109,7 @@ export class GameController {
         data: this.gameService.getSerializedCell(id, [x, y]),
       };
     } catch (error) {
+      this.logger.error(error.message);
       switch (error.constructor) {
         case GameNotFoundError: {
           throw new NotFoundException(error.message);

@@ -1,6 +1,6 @@
-import { GameDifficulty } from '../enums/game-difficulty';
+import { GameDifficulty } from './game-difficulty';
 
-export type CreateGameDto =
+export type GameSettings =
   | {
       difficulty:
         | GameDifficulty.BEGINNER
@@ -9,7 +9,7 @@ export type CreateGameDto =
     }
   | {
       difficulty: GameDifficulty.CUSTOM;
-      readonly rows: number;
-      readonly cols: number;
-      readonly mines: number;
+      cols: number;
+      rows: number;
+      mines: number;
     };

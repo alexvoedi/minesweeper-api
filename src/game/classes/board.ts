@@ -8,7 +8,7 @@ import { SerializedCell } from '../types/serialized-cell';
 import { Xy } from '../types/xy';
 import { Cell } from './cell';
 
-export type BoardSettings = {
+export type Settings = {
   rows: number;
   cols: number;
   mines: number;
@@ -19,7 +19,7 @@ export class Board {
   private openedCells: Cell[];
   private minesPlaced: boolean;
 
-  constructor(readonly settings: BoardSettings) {
+  constructor(readonly settings: Settings) {
     if (this.settings.mines >= this.settings.rows * this.settings.cols) {
       throw new TooManyMinesError();
     }
